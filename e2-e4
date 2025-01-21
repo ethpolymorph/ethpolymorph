@@ -1,0 +1,120 @@
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <cstdlib>
+
+using namespace std;
+
+enum PieceType { NONE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
+enum Color { WHITE, BLACK };
+
+struct Piece {
+    PieceType type = NONE;
+    Color color;
+};
+
+struct Move {
+    int fromX, fromY, toX, toY;
+    int value = 0;
+};
+
+Piece board[8][8];
+
+// Инициализация доски
+void initBoard() {
+    // Белые фигуры
+    board[0][0] = {ROOK, WHITE};
+    board[0][1] = {KNIGHT, WHITE};
+    // ... (добавьте другие фигуры)
+    
+    // Черные фигуры (ИИ)
+    board[7][0] = {ROOK, BLACK};
+    board[7][1] = {KNIGHT, BLACK};
+    // ... (добавьте другие фигуры)
+    
+    // Пешки
+    for(int i = 0; i < 8; i++) {
+        board[1][i] = {PAWN, WHITE};
+        board[6][i] = {PAWN, BLACK};
+    }
+}
+
+// Оценка стоимости фигуры
+int getPieceValue(PieceType type) {
+    switch(type) {
+        case PAWN: return 1;
+        case KNIGHT: return 3;
+        case BISHOP: return 3;
+        case ROOK: return 5;
+        case QUEEN: return 9;
+        case KING: return 100;
+        default: return 0;
+    }
+}
+
+// Поиск лучшего хода для черных (ИИ)
+Move findBestMove() {
+    vector<Move> captures;
+    
+    // Перебор всех клеток доски
+    for(int x = 0; x < 8; x++) {
+        for(int y = 0; y < 8; y++) {
+            if(board[x][y].color != BLACK) continue;
+            
+            // Для пешки
+            if(board[x][y].type == PAWN) {
+                // Взятия
+                if(x < 7 && y > 0 && board[x+1][y-1].color == WHITE) {
+                    captures.push_back({x, y, x+1, y-1, getPieceValue(board[x+1][y-1].type)});
+                }
+                if(x < 7 && y < 7 && board[x+1][y+1].color == WHITE) {
+                    captures.push_back({x, y, x+1, y+1, getPieceValue(board[x+1][y+1].type)});
+                }
+            }
+            
+            // Для коня
+            if(board[x][y].type == KNIGHT) {
+                const int moves[8][2] = {{2,1}, {1,2}, {-1,2}, {-2,1}, 
+                                       {-2,-1}, {-1,-2}, {1,-2}, {2,-1}};
+                for(auto m : moves) {
+                    int nx = x + m[0];
+                    int ny = y + m[1];
+                    if(nx >= 0 && nx < 8 && ny >= 0 && ny < 8 && 
+                       board[nx][ny].color == WHITE) {
+                        captures.push_back({x, y, nx, ny, getPieceValue(board[nx][ny].type)});
+                    }
+                }
+            }
+        }
+    }
+    
+    // Выбор хода с максимальной ценностью
+    if(!captures.empty()) {
+        Move best = captures[0];
+        for(auto m : captures) {
+            if(m.value > best.value) best = m;
+        }
+        return best;
+    }
+    
+    // Если нет взятий - случайный ход (упрощенная логика)
+    return {-1, -1, -1, -1, 0};
+}
+
+int main() {
+    srand(time(0));
+    initBoard();
+    
+    // Ход ИИ
+    Move aiMove = findBestMove();
+    
+    if(aiMove.value > 0) {
+        cout << "AI moves from " << (char)('a' + aiMove.fromY) << 8 - aiMove.fromX
+             << " to " << (char)('a' + aiMove.toY) << 8 - aiMove.toX 
+             << " (captures value: " << aiMove.value << ")\n";
+    } else {
+        cout << "AI makes random move (no captures found)\n";
+    }
+    
+    return 0;
+}
